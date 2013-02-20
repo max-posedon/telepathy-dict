@@ -1,0 +1,10 @@
+#!/usr/bin/python -u
+
+from gobject import MainLoop
+from dbus.mainloop.glib import DBusGMainLoop
+
+from dictionary.connection_manager import DictionaryConnectionManager
+
+DBusGMainLoop(set_as_default=True)
+DictionaryConnectionManager()
+MainLoop().run()
