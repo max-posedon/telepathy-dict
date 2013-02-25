@@ -37,8 +37,14 @@ class DictionaryProtocol(Protocol, ProtocolInterfacePresence):
     _icon = "im-%s" % PROTOCOL
     _vcard_field = "im-%s" % PROTOCOL
 
-    _mandatory_parameters = {
-        'account': 's',
+    _optional_parameters = {
+        'server' : 's',
+        'port' : 'q',
+    }
+
+    _parameter_defaults = {
+        'server' : 'dict.org',
+        'port' : 2628,
     }
 
     _requestable_channel_classes = [

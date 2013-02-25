@@ -1,5 +1,6 @@
 import gobject
 from dbus.types import Array, Dictionary, String, Struct
+from telnetlib import Telnet
 import weakref
 
 from telepathy.constants import (
@@ -48,9 +49,14 @@ class DictionaryConnection(Connection,
         protocol.check_parameters(parameters)
         self._manager = weakref.proxy(manager)
 
-        account = unicode(parameters['account'])
+        account = 'acc'
         self._statuses = protocol._statuses
         self._channel_manager = DictionaryChannelManager(self, protocol)
+
+        self._account = (
+            parameters['server'].encode('utf-8'),
+            parameters['port'],
+        )
         Connection.__init__(self, PROTOCOL, account, PROGRAM, protocol)
         ConnectionInterfaceContactGroups.__init__(self)
         ConnectionInterfaceContactList.__init__(self)
@@ -61,6 +67,8 @@ class DictionaryConnection(Connection,
         self_handle = self.create_handle(HANDLE_TYPE_CONTACT, account.encode('utf-8'))
         self.set_self_handle(self_handle)
 
+        self._tn = None
+
         self.__disconnect_reason = CONNECTION_STATUS_REASON_NONE_SPECIFIED
 
     def handle(self, handle_type, handle_id):
@@ -69,9 +77,12 @@ class DictionaryConnection(Connection,
 
     def Connect(self):
         if self._status == CONNECTION_STATUS_DISCONNECTED:
-            gobject.timeout_add(50, self._connected)
+            self._tn = Telnet(self._account[0], self._account[1])
+            self._tn.write('\r\n')
+            gobject.timeout_add(1000, self._connected)
 
     def _connected(self):
+        self._tn.read_very_eager()
         self._groups = [GROUP]
 
         self.StatusChanged(CONNECTION_STATUS_CONNECTED, CONNECTION_STATUS_REASON_REQUESTED)
@@ -79,7 +90,10 @@ class DictionaryConnection(Connection,
 
     def Disconnect(self):
         self.__disconnect_reason = CONNECTION_STATUS_REASON_REQUESTED
-        gobject.timeout_add(50, self._disconnected)
+        if self._tn:
+            self._tn.close()
+            self._tn = None
+        gobject.timeout_add(0, self._disconnected)
 
     def _disconnected(self):
         self._groups = []

@@ -26,10 +26,12 @@ class DictionaryTextChannel(ChannelTypeText, ChannelInterfaceMessages):
 
     def SendMessage(self, message, flags):
         token = str(uuid4())
-        gobject.timeout_add(50, self._send_message, message, flags, token)
+        gobject.timeout_add(0, self._send_message, message, flags, token)
         return token
 
     def _send_message(self, message, flags, token):
+        self._conn._tn.write('%s\r\n' % str(message[1]['content']))
+
         headers = Dictionary({
             String('message-sent'): UInt64(time()),
             String('message-type'): UInt32(CHANNEL_TEXT_MESSAGE_TYPE_NORMAL),
@@ -40,8 +42,12 @@ class DictionaryTextChannel(ChannelTypeText, ChannelInterfaceMessages):
         }, signature='sv')
         message = Array([headers, body], signature='a{sv}')
         self.MessageSent(message, flags, String(token))
+        
+        gobject.timeout_add(1000, self._wait)
 
-        gobject.timeout_add(50, self._message_received, str(message[1]['content']))
+    def _wait(self):
+        msg = self._conn._tn.read_very_eager()
+        gobject.timeout_add(0, self._message_received, msg)
 
     def _message_received(self, msg):
         self.__message_received_id += 1
